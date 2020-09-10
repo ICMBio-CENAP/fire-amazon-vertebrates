@@ -26,7 +26,7 @@ n_iter <- 150000
 sampling_freq <- 100 # write to file every n iterations
 print_freq <- 5000 # print to screen every n iterations
 # window sizes for updating function
-window_size_update_mu <- 10
+window_size_update_mu <- 5
 window_size_update_sig <- 5
 
 # --- functions ----
@@ -58,7 +58,7 @@ update_uniform <- function(parameter, windowsize){
   lower <- parameter-(windowsize/2)
   upper <- parameter+(windowsize/2)
   new_parameter <- runif(1, lower, upper)
-  new_parameter <- abs(new_parameter) # we can use abs because body mass is always positive
+  #new_parameter <- abs(new_parameter) # change in capture rates can be negative
   #log_hastings_ratio <- 0
   hastings_ratio <- 1
   return(c(new_parameter, hastings_ratio))
@@ -82,18 +82,21 @@ rateSig <- rexp(1,1)
 # ---- Current parameter values ----
 # ----------------------------------
 
+# current rateSig
+current_rateSig <- rexp(1,1)
+
 # mu and sigma burn
 current_mu_burn <- rnorm(1, mean(dataBurned))
-current_sigma_burn <- rgamma(1, shapeSig, rateSig)
+current_sigma_burn <- rgamma(1, shapeSig, current_rateSig)
 
 # mu and sigma unburn
 current_mu_unburn <- rnorm(1, mean(dataUnburned))
-current_sigma_unburn <- rgamma(1, shapeSig, rateSig)
+current_sigma_unburn <- rgamma(1, shapeSig, current_rateSig)
 
 # current likelihood and priors
 current_lik <- sum(log_pdf_normal(dataBurned,current_mu_burn,current_sigma_burn)) + sum(log_pdf_normal(dataUnburned,current_mu_unburn,current_sigma_unburn))
-current_prior_burn <- log_pdf_uniform(current_mu_burn, minMu, maxMu) + log_pdf_gamma(current_sigma_burn, shapeSig, rateSig)
-current_prior_unburn <- log_pdf_uniform(current_mu_unburn, minMu, maxMu) + log_pdf_gamma(current_sigma_unburn, shapeSig, rateSig)
+current_prior_burn <- log_pdf_uniform(current_mu_burn, minMu, maxMu) + log_pdf_gamma(current_sigma_burn, shapeSig, current_rateSig)
+current_prior_unburn <- log_pdf_uniform(current_mu_unburn, minMu, maxMu) + log_pdf_gamma(current_sigma_unburn, shapeSig, current_rateSig)
 current_prior <- current_prior_burn + current_prior_unburn
 current_posterior <- current_lik + current_prior
 
@@ -104,6 +107,11 @@ for (iteration in 1:n_iter){
   # --------------------------------------
   # ---- Propose new parameter values ----
   # --------------------------------------
+  
+  # new_rateSig
+  #proposal_rateSig <- update_uniform(current_rateSig, 1.5)
+  #new_rateSig <- abs(proposal_rateSig[1]) # sigma must be positive
+  #hastings_ratio_rateSig <- proposal_rateSig[2]
   
   # new mu_burn
   proposal_mu_burn <- update_uniform(current_mu_burn, window_size_update_mu)

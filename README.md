@@ -3,6 +3,10 @@ Effect of forest fires on Amazonian vertebrates
 
 This GitHub repository contains the files for the paper on the effect of forest fires on Amazon vertebrates by Carvalho Jr et al., *in prep*.
 
+<img src="results/deltaRai.jpg" title="delta RAi" width="500">
+
+<img src="results/traceplot.jpg" title="delta RAi" width="500">
+
 ### Description
 ```src``` This directory contains the main analysis codes.
 
