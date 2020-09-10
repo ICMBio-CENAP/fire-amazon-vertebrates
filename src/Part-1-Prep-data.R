@@ -3,15 +3,12 @@
 # 2020-09-09
 
 
-## ----Install these packages if you have not already---------------------------
-install.packages(c("TeachingDemos","lubridate","unmarked","ggplot2","dplyr","chron","vegan", "activity", "ggmap"), repos="https://cloud.r-project.org")
-
 ## ----Load libraries------------------------
 #library(TeachingDemos)
-#library(lubridate)
+library(lubridate)
 #library(unmarked)
 #library(ggplot2)
-#library(dplyr)
+library(dplyr)
 #library(chron)
 #library(vegan)
 #library(activity)
@@ -19,18 +16,37 @@ install.packages(c("TeachingDemos","lubridate","unmarked","ggplot2","dplyr","chr
 library(here)
 
 ## ----Source this file--------
-#source("camera trap analysis code-WILDID-09-20-17.R")
+source(here("bin", "ahumada_codes.R"))
 
 ## ----Load data -------
 data <- read.csv(here("data", "Wild_ID_RBG_ROADS_2015to2017_processed.csv"))
 
+# minor adjustments
+data$Camera.Trap.Name <- as.factor(data$Camera.Trap.Name)
+data$td.photo <- as.POSIXct(data$td.photo)
+data$Start.Date <- as.Date(data$Start.Date)
+data$End.Date <- as.Date(data$End.Date)
+data$Photo.Date <- as.Date(data$Photo.Date)
+
+## ----Filter independent records-------
+# Group by events that are 60 minutes apart (and from different species)
+data <- f.separate.events(data, 60)
+# filter retaining only independent records (distinctive combinations of bin and grp)
+data <- distinct(data, bin, grp, .keep_all = TRUE)
+
+
+# separate years
+data2015 <- subset(data, Sampling.Event == 2015)
+data2016 <- subset(data, Sampling.Event == 2016)
+data2017 <- subset(data, Sampling.Event == 2017)
 
 ## ---- Estimate photgraphic capture rates per CT per species-------
 
-photo.rates <- function(x, y) { # , z) {           # x = dataframe, y=species, z=Sampling.Event
+photo.rates <- function(data, species) { # , z) {           # x = dataframe, y=species, z=Sampling.Event
   # first create Sampling.Unit.Name
-  x$Sampling.Unit.Name <- x$Camera.Trap.Name
-  cams <- unique(x$Sampling.Unit.Name)
+  data$Sampling.Unit.Name <- data$Camera.Trap.Name
+  #cams <- unique(data$Sampling.Unit.Name)
+  cams <- levels(data$Sampling.Unit.Name)
   cams <- sort(cams)
   rows <- length(cams)
   effort <- rep(NA, rows)
@@ -39,17 +55,17 @@ photo.rates <- function(x, y) { # , z) {           # x = dataframe, y=species, z
   newdata <- data.frame(cams,effort, n.photos,RAI)
   
   # fill object
-  df.sp <- subset(x, bin == y)
+  df.sp <- subset(data, bin == species)
   
   #for all cameras, determine the open and close date
-  start.dates<-tapply(as.character(x$Start.Date),x$Sampling.Unit.Name,unique)
-  nms<-names(start.dates)
-  start.dates<-ymd(start.dates)
-  names(start.dates)<-nms
+  start.dates <- tapply(as.character(data$Start.Date), data$Sampling.Unit.Name, unique)
+  nms <- names(start.dates)
+  start.dates <- ymd(start.dates)
+  names(start.dates) <- nms
   
-  end.dates<-tapply(as.character(x$End.Date),x$Sampling.Unit.Name,unique)
-  end.dates<-ymd(end.dates)
-  names(end.dates)<-nms
+  end.dates <- tapply(as.character(data$End.Date), data$Sampling.Unit.Name, unique)
+  end.dates <- ymd(end.dates)
+  names(end.dates) <- nms
   
   # calculate effort, number of (independent) photos and RAI
   newdata$effort <- as.numeric(end.dates-start.dates)
@@ -59,21 +75,56 @@ photo.rates <- function(x, y) { # , z) {           # x = dataframe, y=species, z
     newdata$RAI <- (newdata$n.photos/newdata$effort)*100
   }
   assign("newdata", newdata, envir = globalenv())
-  print(newdata)
+  #print(newdata)
+  return(newdata)
 }
 
-# improve following lines, check false NAs, put everything within the above function etc...
 
-# Dasyprocta prymnolopha
-icmbio(data.2015, "Dasyprocta prymnolopha")
-daspry.2015 <- newdata
-icmbio(data.2016, "Dasyprocta prymnolopha")
-daspry.2016 <- newdata
-daspry <- data.frame(daspry.2015$cams, daspry.2015$RAI, daspry.2016$RAI)
-colnames(daspry) <- c("Camera.Trap.Name", "photo.rate.2015", "photo.rate.2016")
-daspry$dif <- daspry$photo.rate.2015-daspry$photo.rate.2016
-daspry
-hist(daspry$dif, xlab="Difference in photographic capture rate, 2015-2016")
+# Test function with Dasyprocta prymnolopha
+photo.rates(data2015, "Dasyprocta prymnolopha")
+agouti2015 <- newdata
+
+photo.rates(data2016, "Dasyprocta prymnolopha")
+agouti2016 <- newdata
+
+photo.rates(data2017, "Dasyprocta prymnolopha")
+agouti2017 <- newdata
+
+# bind RAIs from different years
+agouti <- cbind(agouti2015[,c(1,4)], agouti2016[,c(4)], agouti2017[,c(4)])
+names(agouti) <- c("site", "RAI.15", "RAI.16", "RAI.17")
+
+# difference
+agouti$diff15to16 <- agouti$RAI.15-agouti$RAI.16
+
+
+#---- Covariates ----
+
+# read covars file
+covars <- read.csv(here("data", "baci_covars.csv"))
+
+# unify coordinates for all sites-years in the dataset
+covars$site <- covars$Camera.Trap.Name
+agouti <- merge(agouti[,c(1,5)], covars[,c(8,7)], by="site", all.x=T, all.y=F)
+agouti <- agouti[complete.cases(agouti),]
+
+burned <- subset(agouti, burned=="y")
+burned <- burned$diff15to16
+
+unburned <- subset(agouti, burned=="n")
+unburned <- unburned$diff15to16
+
+# now use burned and unburned as inputs in Bayesian inference
+
+
+
+#--------------------------------------------------------------------------------
+
+
+
+
+
+
 
 
 
@@ -83,8 +134,6 @@ hist(daspry$dif, xlab="Difference in photographic capture rate, 2015-2016")
 #--------------------------------------------------------------------------
 # Plot difference RAIs (BACI) against burned area
 
-# read covars file
-covars <- read.csv(here("data", "baci_covars.csv"))
 
 
 # make a subset of covars to daspryand then match the order
