@@ -116,6 +116,42 @@ unburned <- unburned$diff15to16
 
 # now use burned and unburned as inputs in Bayesian inference
 
+#-------------------------------------------------------
+
+# Test function with Psophia obscura
+photo.rates(data2015, "Psophia obscura")
+psophia2015 <- newdata
+
+photo.rates(data2016, "Psophia obscura")
+psophia2016 <- newdata
+
+photo.rates(data2017, "Psophia obscura")
+psophia2017 <- newdata
+
+# bind RAIs from different years
+psophia <- cbind(psophia2015[,c(1,4)], psophia2016[,c(4)], psophia2017[,c(4)])
+names(psophia) <- c("site", "RAI.15", "RAI.16", "RAI.17")
+
+# difference
+psophia$diff15to16 <- psophia$RAI.15-psophia$RAI.16
+
+
+#---- Covariates ----
+
+# read covars file
+covars <- read.csv(here("data", "baci_covars.csv"))
+
+# unify coordinates for all sites-years in the dataset
+covars$site <- covars$Camera.Trap.Name
+psophia <- merge(psophia[,c(1,5)], covars[,c(8,7)], by="site", all.x=T, all.y=F)
+psophia <- psophia[complete.cases(psophia),]
+
+burned <- subset(psophia, burned=="y")
+burned <- burned$diff15to16
+
+unburned <- subset(psophia, burned=="n")
+unburned <- unburned$diff15to16
+
 
 
 #--------------------------------------------------------------------------------
