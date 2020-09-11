@@ -12,7 +12,7 @@
 
 
 # initialize the output file (provide path to your target directory)
-setwd("C:/Users/ICMBio/Desktop/Transmitting Science")
+setwd("C:/Users/ICMBio/R/fire-amazon-vertebrates/results")
 logfile <- "r_mcmc_samples_unburned_vs_burned_hyper_prior.txt"
 
 # define the column names
