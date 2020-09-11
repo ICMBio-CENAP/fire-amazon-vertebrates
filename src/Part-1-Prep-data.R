@@ -157,46 +157,36 @@ unburned <- unburned$diff15to16
 #--------------------------------------------------------------------------------
 
 
+# Test function with Tapirus terrestris
+photo.rates(data2015, "Tapirus terrestris")
+tapirus2015 <- newdata
+
+photo.rates(data2016, "Tapirus terrestris")
+tapirus2016 <- newdata
+
+photo.rates(data2017, "Tapirus terrestris")
+tapirus2017 <- newdata
+
+# bind RAIs from different years
+tapirus <- cbind(tapirus2015[,c(1,4)], tapirus2016[,c(4)], tapirus2017[,c(4)])
+names(tapirus) <- c("site", "RAI.15", "RAI.16", "RAI.17")
+
+# difference
+tapirus$diff15to16 <- tapirus$RAI.15-tapirus$RAI.16
 
 
+#---- Covariates ----
 
+# read covars file
+covars <- read.csv(here("data", "baci_covars.csv"))
 
+# unify coordinates for all sites-years in the dataset
+covars$site <- covars$Camera.Trap.Name
+tapirus <- merge(tapirus[,c(1,5)], covars[,c(8,7)], by="site", all.x=T, all.y=F)
+tapirus <- tapirus[complete.cases(tapirus),]
 
+burned <- subset(tapirus, burned=="y")
+burned <- burned$diff15to16
 
-
-
-#------------------------------------------------------------------------------
-
-#--------------------------------------------------------------------------
-# Plot difference RAIs (BACI) against burned area
-
-
-
-# make a subset of covars to daspryand then match the order
-covars <- subset(covars, Camera.Trap.Name %in% unique(daspry$Camera.Trap.Name))
-covars$Camera.Trap.Name <- factor(covars$Camera.Trap.Name)
-covars <- covars[match(covars$Camera.Trap.Name, daspry$Camera.Trap.Name),]
-
-hist(covars$prop.buf.500m.burned, xlab="Proportion of buffer burned", main="", col="grey")
-
-# add last column of covars to daspry
-daspry$prop.buf.500m.burned <- covars$prop.buf.500m.burned
-daspry$fire <- covars$fire.2016
-daspry$forest <- covars$mapbiom.forest.pixels
-# add last column of covars to tapter
-tapter$prop.buf.500m.burned <- covars$prop.buf.500m.burned
-tapter$forest <- covars$mapbiom.forest.pixels
-# add last column of covars to certho
-certho$prop.buf.500m.burned <- covars$prop.buf.500m.burned
-certho$forest <- covars$mapbiom.forest.pixels
-# add last column of covars to leopar
-leopar$prop.buf.500m.burned <- covars$prop.buf.500m.burned
-leopar$forest <- covars$mapbiom.forest.pixels
-# add last column of covars to pautub
-pautub$prop.buf.500m.burned <- covars$prop.buf.500m.burned
-pautub$fire <- covars$fire.2016
-pautub$forest <- covars$mapbiom.forest.pixels
-
-# glm daspry
-mod1 <- with(daspry, glm(dif~forest+prop.buf.500m.burned))
-summary(mod1)
+unburned <- subset(tapirus, burned=="n")
+unburned <- unburned$diff15to16
