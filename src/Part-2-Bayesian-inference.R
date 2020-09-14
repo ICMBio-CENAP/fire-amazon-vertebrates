@@ -2,7 +2,9 @@
 # Elildo Carvalho Jr, 2020-09-10
 
 # MCMC algorithm (Metropolis-Hastings)
-# Body sizes of unburned vs. burned
+# Photographic capture rates in unburned vs. burned sites
+# Data corresponds to the difference in photographic capture rates before and after a fire
+
 # With hyper-priors!!!!
 
 # ---- Read data ----
